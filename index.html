@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Salah & Qur'an Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F4FAF5;
+    --surface:#FFFFFF;
+    --surface-hi:#EAF6ED;
+    --emerald:#2F9E6E;
+    --emerald-dim:#25835A;
+    --emerald-pale:#D5F0DF;
+    --gold:#E0A83B;
+    --gold-dim:#C89226;
+    --coral:#EF8354;
+    --coral-pale:#FCE3D6;
+    --ink:#17332A;
+    --muted:#6C8577;
+    --line:#DCEEE1;
+    --radius:16px;
+    --shadow:0 2px 10px rgba(23,51,42,0.06);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Work Sans',sans-serif;padding:22px 14px 60px;min-height:100vh;
+  }
+  .wrap{max-width:660px;margin:0 auto;}
+
+  header{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+  h1{font-family:'Amiri',serif;font-weight:700;font-size:clamp(22px,6vw,28px);margin:0;color:var(--emerald-dim);}
+  .dates{color:var(--muted);font-size:12.5px;margin:2px 0 0;font-family:'IBM Plex Mono',monospace;}
+
+  .ring-wrap{position:relative;width:60px;height:60px;flex-shrink:0;}
+  .ring-wrap svg{transform:rotate(-90deg);}
+  .ring-bg{fill:none;stroke:var(--emerald-pale);stroke-width:6;}
+  .ring-fg{fill:none;stroke:var(--gold);stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .5s ease;}
+  .ring-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink);}
+
+  .stat-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+  .stat-chip{
+    background:var(--surface);border:1px solid var(--line);border-radius:999px;
+    padding:6px 12px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--gold-dim);
+    box-shadow:var(--shadow);
+  }
+  .stat-chip .n{color:var(--ink);font-weight:600;}
+
+  .tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+  .vtab{
+    flex:1;min-width:70px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;
+    color:var(--muted);background:var(--surface);border:1px solid var(--line);
+    padding:10px 6px;border-radius:10px;cursor:pointer;transition:all .15s ease;
+  }
+  .vtab.active{background:var(--emerald);color:#fff;border-color:var(--emerald);font-weight:600;}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);}
+
+  /* Day detail */
+  .day-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line);}
+  .day-head .g{font-family:'Amiri',serif;font-size:19px;color:var(--ink);}
+  .day-head .h{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted);}
+
+  .prayer-block{margin-bottom:14px;}
+  .prayer-block.excluded .unit-row{opacity:.4;pointer-events:none;}
+  .prayer-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;}
+  .prayer-name{font-family:'Amiri',serif;font-size:16px;color:var(--emerald-dim);}
+  .prayer-name .ar{color:var(--muted);font-size:13px;margin-left:6px;}
+  .prayer-frac{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);}
+  .prayer-frac.excl{color:var(--coral);}
+
+  .unit-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .unit{
+    display:flex;align-items:center;gap:6px;
+    background:var(--surface-hi);border:1px solid var(--line);border-radius:8px;
+    padding:6px 10px;cursor:pointer;user-select:none;transition:all .15s ease;
+  }
+  .unit.on{background:var(--emerald-pale);border-color:var(--emerald);}
+  .unit.optional{border-style:dashed;opacity:.9;}
+  .unit .box{width:14px;height:14px;border:1.5px solid var(--muted);border-radius:4px;flex-shrink:0;position:relative;background:#fff;}
+  .unit.on .box{background:var(--emerald);border-color:var(--emerald);}
+  .unit.on .box::after{content:'';position:absolute;left:4px;top:1px;width:3px;height:7px;border:solid #fff;border-width:0 1.5px 1.5px 0;transform:rotate(45deg);}
+  .unit .lbl{font-size:12.5px;color:var(--ink);}
+  .unit .cnt{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);}
+
+  .quran-block{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);}
+  .quran-title{font-family:'Amiri',serif;font-size:16px;color:var(--emerald-dim);margin-bottom:8px;}
+  .quran-stepper{display:flex;align-items:center;gap:14px;}
+  .step-btn{
+    width:34px;height:34px;border-radius:50%;background:var(--emerald-pale);border:1px solid var(--emerald);
+    color:var(--emerald-dim);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  .step-val{font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--ink);min-width:70px;text-align:center;}
+
+  /* Calendar */
+  .cal-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .cal-nav button{background:var(--surface-hi);border:1px solid var(--line);color:var(--emerald-dim);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:16px;}
+  .cal-month-label{font-family:'Amiri',serif;font-size:18px;color:var(--ink);}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+  .cal-dow{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-align:center;padding-bottom:4px;}
+  .cal-cell{
+    aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;cursor:pointer;position:relative;
+    background:var(--surface-hi);border:1px solid var(--line);color:var(--ink);
+  }
+  .cal-cell.empty{background:transparent;border:none;cursor:default;}
+  .cal-cell.today{border-color:var(--gold);border-width:2px;}
+  .cal-cell.full{background:var(--emerald);border-color:var(--emerald-dim);color:#fff;}
+  .cal-cell.partial{background:linear-gradient(135deg,var(--surface-hi) 50%,var(--emerald-pale) 50%);}
+  .cal-cell.excl-day{background:var(--coral-pale);border-color:var(--coral);}
+  .detail-panel{margin-top:14px;}
+
+  /* Monthly */
+  .month-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer;}
+  .month-row:last-child{border-bottom:none;}
+  .month-row .m-label{font-family:'Amiri',serif;font-size:16px;color:var(--ink);}
+  .month-row .m-stats{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);text-align:right;}
+  .month-row .m-stats .pct{color:var(--gold-dim);font-size:13px;}
+
+  /* Haiz tab */
+  .haiz-form-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .haiz-form-row label{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);display:block;margin-bottom:4px;}
+  .haiz-field{flex:1;min-width:130px;}
+  .haiz-field input, .haiz-field select{
+    width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:8px;
+    background:var(--surface-hi);color:var(--ink);font-family:'Work Sans',sans-serif;font-size:13px;
+  }
+  .haiz-save{
+    background:var(--coral);color:#fff;border:none;border-radius:8px;padding:10px 16px;
+    font-family:'IBM Plex Mono',monospace;font-size:12.5px;cursor:pointer;width:100%;margin-top:4px;
+  }
+  .haiz-list{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);}
+  .haiz-item{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);}
+  .haiz-item:last-child{border-bottom:none;}
+  .haiz-item .txt{font-size:13px;color:var(--ink);}
+  .haiz-item .del{color:var(--coral);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:12px;border:1px solid var(--coral);border-radius:999px;padding:3px 9px;}
+  .haiz-empty{color:var(--muted);font-size:13px;font-style:italic;}
+
+  footer{text-align:center;color:var(--muted);font-size:11px;margin-top:22px;font-family:'IBM Plex Mono',monospace;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div style="flex:1">
+      <h1>☾ Salah &amp; Qur'an</h1>
+      <p class="dates" id="dateLine">—</p>
+    </div>
+    <div class="ring-wrap">
+      <svg width="60" height="60" viewBox="0 0 60 60">
+        <circle class="ring-bg" cx="30" cy="30" r="24"></circle>
+        <circle id="ringFg" class="ring-fg" cx="30" cy="30" r="24" stroke-dasharray="150.8" stroke-dashoffset="150.8"></circle>
+      </svg>
+      <div class="ring-label" id="ringLabel">0%</div>
+    </div>
+  </header>
+
+  <div class="stat-row">
+    <div class="stat-chip">🔥 <span class="n" id="streakStat">0</span> day streak</div>
+    <div class="stat-chip">📖 Juz <span class="n" id="juzStat">0/30</span></div>
+    <div class="stat-chip">✅ <span class="n" id="khatmStat">0</span> khatm(s)</div>
+  </div>
+
+  <div class="tabs">
+    <div class="vtab" data-v="today">Today</div>
+    <div class="vtab" data-v="calendar">Calendar</div>
+    <div class="vtab" data-v="monthly">Monthly</div>
+    <div class="vtab" data-v="haiz">Haiz</div>
+  </div>
+
+  <div id="content"></div>
+
+  <footer>Hijri dates are calculated (tabular), may differ by a day from local moon-sighting announcements</footer>
+</div>
+
+<script>
+// ---------- constants ----------
+const START = new Date(2026,6,25); // Jul 25 2026
+const END = new Date(2027,6,25);   // Jul 25 2027
+const HIJRI_MONTHS = ["Muharram","Safar","Rabi al-Awwal","Rabi al-Thani","Jumada al-Awwal","Jumada al-Thani","Rajab","Sha'ban","Ramadan","Shawwal","Dhul Qa'dah","Dhul Hijjah"];
+const GREG_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DOW = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+const PRAYER_TEMPLATE = {
+  fajr:    { ar:"الفجر", units:[ ["Sunnah",2,false], ["Fard",2,true] ] },
+  dhuhr:   { ar:"الظهر", units:[ ["Sunnah",4,false], ["Fard",4,true], ["Sunnah",2,false], ["Nafl",2,false] ] },
+  asr:     { ar:"العصر", units:[ ["Sunnah",4,false,true], ["Fard",4,true] ] },
+  maghrib: { ar:"المغرب", units:[ ["Fard",3,true], ["Sunnah",2,false], ["Nafl",2,false] ] },
+  isha:    { ar:"العشاء", units:[ ["Sunnah",4,false,true], ["Fard",4,true], ["Sunnah",2,false], ["Nafl",4,false], ["Witr",3,true] ] },
+};
+const PRAYER_ORDER = ["fajr","dhuhr","asr","maghrib","isha"];
+const PRAYER_LABEL = { fajr:"Fajr", dhuhr:"Dhuhr", asr:"Asr", maghrib:"Maghrib", isha:"Isha" };
+
+// ---------- hijri conversion ----------
+function gregorianToHijri(date) {
+  const y = date.getFullYear(), m = date.getMonth()+1, d = date.getDate();
+  let jd = Math.floor((1461 * (y + 4800 + Math.floor((m - 14)/12)))/4)
+   + Math.floor((367 * (m - 2 - 12 * Math.floor((m - 14)/12)))/12)
+   - Math.floor((3 * Math.floor((y + 4900 + Math.floor((m - 14)/12))/100))/4)
+   + d - 32075;
+  let l = jd - 1948440 + 10632;
+  let n = Math.floor((l-1)/10631);
+  l = l - 10631*n + 354;
+  let j = (Math.floor((10985-l)/5316))*(Math.floor((50*l)/17719)) + (Math.floor(l/5670))*(Math.floor((43*l)/15238));
+  l = l - (Math.floor((30-j)/15))*(Math.floor((17719*j)/50)) - (Math.floor(j/16))*(Math.floor((15238*j)/43)) + 29;
+  let hMonth = Math.floor((24*l)/709);
+  let hDay = l - Math.floor((709*hMonth)/24);
+  let hYear = 30*n + j - 30;
+  return { year:hYear, month:hMonth, day:hDay };
+}
+
+function dateKey(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function inRange(d){ return d >= START && d <= END; }
+
+// ---------- state ----------
+function blankDay(){
+  const p = {};
+  PRAYER_ORDER.forEach(k=>{ p[k] = PRAYER_TEMPLATE[k].units.map(()=>false); });
+  return { prayers:p, quran:0 };
+}
+
+let state = {};
+try {
+  const raw = localStorage.getItem('salahTrackerState');
+  state = raw ? JSON.parse(raw) : {};
+} catch(e){ state = {}; }
+if(!state._days) state = { _days: state, _haizPeriods: [] };
+if(!Array.isArray(state._haizPeriods)) state._haizPeriods = [];
+
+function getDay(key){
+  if(!state._days[key]) state._days[key] = blankDay();
+  PRAYER_ORDER.forEach(k=>{
+    const need = PRAYER_TEMPLATE[k].units.length;
+    if(!state._days[key].prayers[k]) state._days[key].prayers[k] = new Array(need).fill(false);
+    while(state._days[key].prayers[k].length < need) state._days[key].prayers[k].push(false);
+  });
+  if(typeof state._days[key].quran !== 'number') state._days[key].quran = 0;
+  return state._days[key];
+}
+function saveState(){
+  try{ localStorage.setItem('salahTrackerState', JSON.stringify(state)); }catch(e){}
+}
+
+// ---------- haiz period logic ----------
+// periods: [{startKey, startIdx, endKey, endIdx}]
+function isExcluded(key, prayerIdx){
+  for(const p of state._haizPeriods){
+    if(key < p.startKey || key > p.endKey) continue;
+    if(key === p.startKey && key === p.endKey) return prayerIdx >= p.startIdx && prayerIdx <= p.endIdx;
+    if(key === p.startKey) return prayerIdx >= p.startIdx;
+    if(key === p.endKey) return prayerIdx <= p.endIdx;
+    return true;
+  }
+  return false;
+}
+function activePrayers(key){
+  return PRAYER_ORDER.filter((k,i)=> !isExcluded(key, i));
+}
+
+// ---------- helpers ----------
+function fardComplete(key){
+  const day = getDay(key);
+  return activePrayers(key).every(k=>{
+    const units = PRAYER_TEMPLATE[k].units;
+    return units.every((u,i)=> !u[2] || day.prayers[k][i]);
+  });
+}
+function completionFraction(key){
+  const day = getDay(key);
+  let total=0, done=0;
+  activePrayers(key).forEach(k=>{
+    total += day.prayers[k].length;
+    done += day.prayers[k].filter(Boolean).length;
+  });
+  return total ? done/total : 1;
+}
+function totalJuz(){
+  let sum = 0;
+  Object.values(state._days).forEach(d=> sum += (d.quran||0));
+  return sum;
+}
+function computeStreak(){
+  let streak = 0;
+  let d = new Date();
+  d.setHours(0,0,0,0);
+  if(d > END) d = new Date(END);
+  while(inRange(d)){
+    if(fardComplete(dateKey(d))) streak++; else break;
+    d.setDate(d.getDate()-1);
+    if(d < START) break;
+  }
+  return streak;
+}
+
+// ---------- rendering ----------
+let view = 'today';
+let calMonthOffset = 0;
+let selectedCalDate = null;
+
+const contentEl = document.getElementById('content');
+
+document.querySelectorAll('.vtab').forEach(t=>{
+  t.onclick = () => { view = t.dataset.v; render(); };
+});
+
+function renderUnit(container, key, prayerKey, idx, unitDef){
+  const [label, count, required] = unitDef;
+  const day = getDay(key);
+  const checked = day.prayers[prayerKey][idx];
+  const el = document.createElement('div');
+  el.className = 'unit' + (checked?' on':'') + (!required?' optional':'');
+  el.innerHTML = `<div class="box"></div><div class="lbl">${label}</div><div class="cnt">${count}</div>`;
+  el.onclick = () => {
+    day.prayers[prayerKey][idx] = !day.prayers[prayerKey][idx];
+    saveState();
+    render();
+  };
+  container.appendChild(el);
+}
+
+function renderDayDetail(container, d){
+  const key = dateKey(d);
+  const day = getDay(key);
+  const hijri = gregorianToHijri(d);
+
+  const head = document.createElement('div');
+  head.className = 'day-head';
+  head.innerHTML = `<span class="g">${DOW[(d.getDay()+6)%7]}, ${d.getDate()} ${GREG_MONTHS[d.getMonth()]} ${d.getFullYear()}</span>
+    <span class="h">${hijri.day} ${HIJRI_MONTHS[hijri.month-1]} ${hijri.year} AH</span>`;
+  container.appendChild(head);
+
+  PRAYER_ORDER.forEach((pk,pIdx)=>{
+    const tmpl = PRAYER_TEMPLATE[pk];
+    const excluded = isExcluded(key, pIdx);
+    const block = document.createElement('div');
+    block.className = 'prayer-block' + (excluded ? ' excluded' : '');
+    const doneCount = day.prayers[pk].filter(Boolean).length;
+    const titleRow = document.createElement('div');
+    titleRow.className = 'prayer-title';
+    titleRow.innerHTML = `<div class="prayer-name">${PRAYER_LABEL[pk]} <span class="ar">${tmpl.ar}</span></div>
+      <div class="prayer-frac${excluded?' excl':''}">${excluded ? 'excluded' : doneCount+'/'+tmpl.units.length}</div>`;
+    block.appendChild(titleRow);
+
+    const row = document.createElement('div');
+    row.className = 'unit-row';
+    tmpl.units.forEach((u,i)=> renderUnit(row, key, pk, i, u));
+    block.appendChild(row);
+    container.appendChild(block);
+  });
+
+  const qBlock = document.createElement('div');
+  qBlock.className = 'quran-block';
+  qBlock.innerHTML = `<div class="quran-title">📖 Qur'an — Juz read today</div>`;
+  const stepper = document.createElement('div');
+  stepper.className = 'quran-stepper';
+  const minus = document.createElement('div'); minus.className='step-btn'; minus.textContent='–';
+  const val = document.createElement('div'); val.className='step-val'; val.textContent = day.quran + ' juz';
+  const plus = document.createElement('div'); plus.className='step-btn'; plus.textContent='+';
+  minus.onclick = () => { day.quran = Math.max(0, Math.round((day.quran - 0.5)*2)/2); saveState(); render(); };
+  plus.onclick = () => { day.quran = Math.round((day.quran + 0.5)*2)/2; saveState(); render(); };
+  stepper.appendChild(minus); stepper.appendChild(val); stepper.appendChild(plus);
+  qBlock.appendChild(stepper);
+  container.appendChild(qBlock);
+}
+
+function renderToday(){
+  contentEl.innerHTML = '';
+  const card = document.createElement('div');
+  card.className = 'card';
+  const now = new Date();
+  const clamped = now < START ? new Date(START) : (now > END ? new Date(END) : now);
+  renderDayDetail(card, clamped);
+  contentEl.appendChild(card);
+}
+
+function monthMeta(offset){
+  return new Date(START.getFullYear(), START.getMonth()+offset, 1);
+}
+const totalMonths = (END.getFullYear()-START.getFullYear())*12 + (END.getMonth()-START.getMonth()) + 1;
+
+function renderCalendar(){
+  contentEl.innerHTML = '';
+  const card = document.createElement('div');
+  card.className = 'card';
+
+  const monthDate = monthMeta(calMonthOffset);
+  const nav = document.createElement('div');
+  nav.className = 'cal-nav';
+  const prevBtn = document.createElement('button'); prevBtn.textContent='‹';
+  const nextBtn = document.createElement('button'); nextBtn.textContent='›';
+  prevBtn.disabled = calMonthOffset<=0;
+  nextBtn.disabled = calMonthOffset>=totalMonths-1;
+  prevBtn.style.opacity = prevBtn.disabled ? .3 : 1;
+  nextBtn.style.opacity = nextBtn.disabled ? .3 : 1;
+  prevBtn.onclick = () => { if(calMonthOffset>0){ calMonthOffset--; selectedCalDate=null; render(); } };
+  nextBtn.onclick = () => { if(calMonthOffset<totalMonths-1){ calMonthOffset++; selectedCalDate=null; render(); } };
+  const label = document.createElement('div');
+  label.className = 'cal-month-label';
+  label.textContent = GREG_MONTHS[monthDate.getMonth()] + ' ' + monthDate.getFullYear();
+  nav.appendChild(prevBtn); nav.appendChild(label); nav.appendChild(nextBtn);
+  card.appendChild(nav);
+
+  const grid = document.createElement('div');
+  grid.className = 'cal-grid';
+  DOW.forEach(dow=>{
+    const el = document.createElement('div'); el.className='cal-dow'; el.textContent=dow;
+    grid.appendChild(el);
+  });
+
+  const firstOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const startOffset = (firstOfMonth.getDay()+6)%7;
+  for(let i=0;i<startOffset;i++){
+    const e = document.createElement('div'); e.className='cal-cell empty'; grid.appendChild(e);
+  }
+  const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth()+1, 0).getDate();
+  const todayKey = dateKey(new Date());
+  for(let dNum=1; dNum<=daysInMonth; dNum++){
+    const cellDate = new Date(monthDate.getFullYear(), monthDate.getMonth(), dNum);
+    const cell = document.createElement('div');
+    if(!inRange(cellDate)){
+      cell.className='cal-cell empty';
+    } else {
+      const key = dateKey(cellDate);
+      const frac = completionFraction(key);
+      const fullyExcluded = PRAYER_ORDER.every((k,i)=>isExcluded(key,i));
+      let cls = 'cal-cell';
+      if(fullyExcluded) cls += ' excl-day';
+      else if(frac>=1) cls += ' full';
+      else if(frac>0) cls += ' partial';
+      if(key===todayKey) cls += ' today';
+      cell.className = cls;
+      cell.textContent = dNum;
+      cell.onclick = () => { selectedCalDate = key; render(); };
+    }
+    grid.appendChild(cell);
+  }
+  card.appendChild(grid);
+
+  if(selectedCalDate){
+    const detail = document.createElement('div');
+    detail.className = 'detail-panel card';
+    detail.style.marginTop = '14px';
+    const [y,m,dd] = selectedCalDate.split('-').map(Number);
+    renderDayDetail(detail, new Date(y, m-1, dd));
+    card.appendChild(detail);
+  }
+
+  contentEl.appendChild(card);
+}
+
+function renderMonthly(){
+  contentEl.innerHTML = '';
+  const card = document.createElement('div');
+  card.className = 'card';
+  for(let off=0; off<totalMonths; off++){
+    const monthDate = monthMeta(off);
+    const y = monthDate.getFullYear(), m = monthDate.getMonth();
+    const daysInMonth = new Date(y, m+1, 0).getDate();
+    let totalPrayerUnits=0, doneUnits=0, juzSum=0, fullDays=0, trackedDays=0;
+    for(let dNum=1; dNum<=daysInMonth; dNum++){
+      const cellDate = new Date(y, m, dNum);
+      if(!inRange(cellDate)) continue;
+      trackedDays++;
+      const key = dateKey(cellDate);
+      const day = getDay(key);
+      activePrayers(key).forEach(pk=>{
+        totalPrayerUnits += day.prayers[pk].length;
+        doneUnits += day.prayers[pk].filter(Boolean).length;
+      });
+      juzSum += (day.quran||0);
+      if(completionFraction(key)>=1) fullDays++;
+    }
+    const pct = totalPrayerUnits ? Math.round((doneUnits/totalPrayerUnits)*100) : 0;
+    const row = document.createElement('div');
+    row.className = 'month-row';
+    row.innerHTML = `<div class="m-label">${GREG_MONTHS[m]} ${y}</div>
+      <div class="m-stats"><span class="pct">${pct}%</span> prayers · ${juzSum} juz · ${fullDays}/${trackedDays} full days</div>`;
+    row.onclick = () => { view='calendar'; calMonthOffset=off; selectedCalDate=null; render(); };
+    card.appendChild(row);
+  }
+  contentEl.appendChild(card);
+}
+
+function renderHaiz(){
+  contentEl.innerHTML = '';
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `<div class="day-head"><span class="g">Log a Haiz Period</span></div>`;
+
+  const minD = dateKey(START), maxD = dateKey(END);
+  const prayerOptions = PRAYER_ORDER.map((k,i)=>`<option value="${i}">${PRAYER_LABEL[k]}</option>`).join('');
+
+  const form = document.createElement('div');
+  const row1 = document.createElement('div'); row1.className = 'haiz-form-row';
+  row1.innerHTML = `
+    <div class="haiz-field"><label>Start date</label><input type="date" id="hStartDate" min="${minD}" max="${maxD}" value="${minD}"></div>
+    <div class="haiz-field"><label>From prayer</label><select id="hStartPrayer">${prayerOptions}</select></div>`;
+  const row2 = document.createElement('div'); row2.className = 'haiz-form-row';
+  row2.innerHTML = `
+    <div class="haiz-field"><label>End date</label><input type="date" id="hEndDate" min="${minD}" max="${maxD}" value="${minD}"></div>
+    <div class="haiz-field"><label>Through prayer</label><select id="hEndPrayer">${prayerOptions}</select></div>`;
+  form.appendChild(row1);
+  form.appendChild(row2);
+
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'haiz-save';
+  saveBtn.textContent = 'Save Period';
+  saveBtn.onclick = () => {
+    const sD = document.getElementById('hStartDate').value;
+    const sP = parseInt(document.getElementById('hStartPrayer').value,10);
+    const eD = document.getElementById('hEndDate').value;
+    const eP = parseInt(document.getElementById('hEndPrayer').value,10);
+    if(!sD || !eD){ return; }
+    if(eD < sD || (eD===sD && eP < sP)){ alert('End must be after start.'); return; }
+    state._haizPeriods.push({ startKey:sD, startIdx:sP, endKey:eD, endIdx:eP });
+    state._haizPeriods.sort((a,b)=> a.startKey.localeCompare(b.startKey));
+    saveState();
+    render();
+  };
+  form.appendChild(saveBtn);
+  card.appendChild(form);
+
+  const listWrap = document.createElement('div');
+  listWrap.className = 'haiz-list';
+  if(state._haizPeriods.length===0){
+    listWrap.innerHTML = `<div class="haiz-empty">No periods logged yet.</div>`;
+  } else {
+    state._haizPeriods.forEach((p, idx)=>{
+      const item = document.createElement('div');
+      item.className = 'haiz-item';
+      const sameDay = p.startKey === p.endKey;
+      const txt = sameDay
+        ? `${PRAYER_LABEL[PRAYER_ORDER[p.startIdx]]} \u2192 ${PRAYER_LABEL[PRAYER_ORDER[p.endIdx]]}, ${p.startKey}`
+        : `${PRAYER_LABEL[PRAYER_ORDER[p.startIdx]]} of ${p.startKey} \u2192 ${PRAYER_LABEL[PRAYER_ORDER[p.endIdx]]} of ${p.endKey}`;
+      item.innerHTML = `<span class="txt">${txt}</span>`;
+      const del = document.createElement('span');
+      del.className = 'del';
+      del.textContent = 'Remove';
+      del.onclick = () => { state._haizPeriods.splice(idx,1); saveState(); render(); };
+      item.appendChild(del);
+      listWrap.appendChild(item);
+    });
+  }
+  card.appendChild(listWrap);
+  contentEl.appendChild(card);
+}
+
+function renderHeader(){
+  const now = new Date();
+  const hijri = gregorianToHijri(now);
+  document.getElementById('dateLine').textContent =
+    `${GREG_MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()} · ${hijri.day} ${HIJRI_MONTHS[hijri.month-1]} ${hijri.year} AH`;
+
+  let totalUnits=0, doneUnits=0;
+  let d = new Date(START);
+  while(d<=Math.min(now,END)){
+    const key = dateKey(d);
+    const day = getDay(key);
+    activePrayers(key).forEach(pk=>{ totalUnits += day.prayers[pk].length; doneUnits += day.prayers[pk].filter(Boolean).length; });
+    d.setDate(d.getDate()+1);
+  }
+  const pct = totalUnits ? doneUnits/totalUnits : 0;
+  const circumference = 150.8;
+  document.getElementById('ringFg').style.strokeDashoffset = circumference*(1-pct);
+  document.getElementById('ringLabel').textContent = Math.round(pct*100)+'%';
+
+  document.getElementById('streakStat').textContent = computeStreak();
+  const tj = totalJuz();
+  document.getElementById('juzStat').textContent = Math.round((tj%30)*10)/10 + '/30';
+  document.getElementById('khatmStat').textContent = Math.floor(tj/30);
+}
+
+function render(){
+  document.querySelectorAll('.vtab').forEach(t=> t.classList.toggle('active', t.dataset.v===view));
+  if(view==='today') renderToday();
+  else if(view==='calendar') renderCalendar();
+  else if(view==='monthly') renderMonthly();
+  else renderHaiz();
+  renderHeader();
+}
+render();
+</script>
+</body>
+</html>
