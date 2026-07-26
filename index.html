@@ -86,6 +86,16 @@
   .unit .lbl{font-size:12.5px;color:var(--ink);}
   .unit .cnt{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);}
 
+  .unit-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;}
+  .qaza-pill{
+    font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.02em;
+    border:1px solid var(--gold);color:var(--gold-dim);border-radius:999px;
+    padding:2px 8px;cursor:pointer;background:transparent;transition:all .15s ease;
+  }
+  .qaza-pill.on{background:var(--gold);color:#fff;border-color:var(--gold);}
+  .unit.qaza-on{background:#FBF1DC;border-color:var(--gold);}
+  .unit.qaza-on .box{background:var(--gold);border-color:var(--gold);}
+
   .quran-block{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);}
   .quran-title{font-family:'Amiri',serif;font-size:16px;color:var(--emerald-dim);margin-bottom:8px;}
   .quran-stepper{display:flex;align-items:center;gap:14px;}
@@ -94,6 +104,30 @@
     color:var(--emerald-dim);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;
   }
   .step-val{font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--ink);min-width:70px;text-align:center;}
+
+  .extra-block{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);}
+  .extra-title{font-family:'Amiri',serif;font-size:16px;color:var(--emerald-dim);margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+  .fri-badge{font-family:'IBM Plex Mono',monospace;font-size:10px;background:var(--gold);color:#fff;border-radius:999px;padding:2px 8px;}
+  .extra-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .ayat-kursi-row{margin-top:6px;}
+  .tally-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);}
+  .tally-row:last-child{border-bottom:none;}
+  .tally-label{font-size:13px;color:var(--ink);}
+  .tally-target{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--gold-dim);}
+  .tally-stepper{display:flex;align-items:center;gap:10px;}
+  .tally-stepper .step-btn{width:28px;height:28px;font-size:15px;}
+  .tally-stepper .step-val{font-size:13px;min-width:44px;}
+  .tally-direct{
+    width:58px;padding:5px 7px;border:1px solid var(--line);border-radius:8px;
+    background:var(--surface-hi);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:12px;
+  }
+  .tally-input{
+    width:56px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink);
+    border:1px solid var(--line);border-radius:6px;padding:5px 2px;background:var(--surface-hi);
+  }
+
+  .fast-card{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);}
+  .fast-note{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted);margin-bottom:8px;}
 
   /* Calendar */
   .cal-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
@@ -162,6 +196,7 @@
     <div class="stat-chip">🔥 <span class="n" id="streakStat">0</span> day streak</div>
     <div class="stat-chip">📖 Juz <span class="n" id="juzStat">0/30</span></div>
     <div class="stat-chip">✅ <span class="n" id="khatmStat">0</span> khatm(s)</div>
+    <div class="stat-chip">🕓 Qaza <span class="n" id="qazaStat">0</span></div>
   </div>
 
   <div class="tabs">
@@ -169,6 +204,7 @@
     <div class="vtab" data-v="calendar">Calendar</div>
     <div class="vtab" data-v="monthly">Monthly</div>
     <div class="vtab" data-v="haiz">Haiz</div>
+    <div class="vtab" data-v="adhkar">Adhkar</div>
   </div>
 
   <div id="content"></div>
@@ -193,6 +229,29 @@ const PRAYER_TEMPLATE = {
 };
 const PRAYER_ORDER = ["fajr","dhuhr","asr","maghrib","isha"];
 const PRAYER_LABEL = { fajr:"Fajr", dhuhr:"Dhuhr", asr:"Asr", maghrib:"Maghrib", isha:"Isha" };
+
+const MORNING_ADHKAR = [
+  "Ayat al-Kursi",
+  "Surah Al-Ikhlas (×3)",
+  "Surah Al-Falaq (×3)",
+  "Surah An-Nas (×3)",
+  "Morning declaration (Asbahna wa asbahal mulku lillah)",
+  "Sayyid al-Istighfar",
+  "Hasbiyallahu la ilaha illa huwa (×7)",
+  "Bismillahil-ladhi la yadhurru ma'a ismihi shay' (×3)",
+  "Subhanallahi wa bihamdihi (×100)",
+];
+const EVENING_ADHKAR = [
+  "Ayat al-Kursi",
+  "Surah Al-Ikhlas (×3)",
+  "Surah Al-Falaq (×3)",
+  "Surah An-Nas (×3)",
+  "Evening declaration (Amsaina wa amsal mulku lillah)",
+  "Sayyid al-Istighfar",
+  "Hasbiyallahu la ilaha illa huwa (×7)",
+  "Bismillahil-ladhi la yadhurru ma'a ismihi shay' (×3)",
+  "A'udhu bikalimatillahi at-tammati min sharri ma khalaq (×3)",
+];
 
 // ---------- hijri conversion ----------
 function gregorianToHijri(date) {
@@ -219,9 +278,23 @@ function inRange(d){ return d >= START && d <= END; }
 
 // ---------- state ----------
 function blankDay(){
-  const p = {};
-  PRAYER_ORDER.forEach(k=>{ p[k] = PRAYER_TEMPLATE[k].units.map(()=>false); });
-  return { prayers:p, quran:0 };
+  const p = {}, q = {};
+  PRAYER_ORDER.forEach(k=>{
+    p[k] = PRAYER_TEMPLATE[k].units.map(()=>false);
+    q[k] = PRAYER_TEMPLATE[k].units.map(()=>false);
+  });
+  return {
+    prayers:p, qaza:q, quran:0, quranTranslation:0,
+    extras:{
+      yaseen:false, manzil:false, waqia:false, mulk:false,
+      kahf:false, jumua:false,
+      morningAdhkar: MORNING_ADHKAR.map(()=>false),
+      eveningAdhkar: EVENING_ADHKAR.map(()=>false),
+      ayatKursi:[false,false,false,false,false],
+      istighfar:0, durood:0, dhikr:0,
+      fasted:false,
+    }
+  };
 }
 
 let state = {};
@@ -234,12 +307,28 @@ if(!Array.isArray(state._haizPeriods)) state._haizPeriods = [];
 
 function getDay(key){
   if(!state._days[key]) state._days[key] = blankDay();
+  if(!state._days[key].qaza) state._days[key].qaza = {};
   PRAYER_ORDER.forEach(k=>{
     const need = PRAYER_TEMPLATE[k].units.length;
     if(!state._days[key].prayers[k]) state._days[key].prayers[k] = new Array(need).fill(false);
     while(state._days[key].prayers[k].length < need) state._days[key].prayers[k].push(false);
+    if(!state._days[key].qaza[k]) state._days[key].qaza[k] = new Array(need).fill(false);
+    while(state._days[key].qaza[k].length < need) state._days[key].qaza[k].push(false);
   });
   if(typeof state._days[key].quran !== 'number') state._days[key].quran = 0;
+  if(typeof state._days[key].quranTranslation !== 'number') state._days[key].quranTranslation = 0;
+  const defExtras = { yaseen:false, manzil:false, waqia:false, mulk:false, kahf:false, jumua:false,
+    ayatKursi:[false,false,false,false,false],
+    istighfar:0, durood:0, dhikr:0, fasted:false };
+  if(!state._days[key].extras) state._days[key].extras = {};
+  Object.keys(defExtras).forEach(k=>{
+    if(state._days[key].extras[k] === undefined) state._days[key].extras[k] = defExtras[k];
+  });
+  if(!Array.isArray(state._days[key].extras.ayatKursi)) state._days[key].extras.ayatKursi = [false,false,false,false,false];
+  if(!Array.isArray(state._days[key].extras.morningAdhkar)) state._days[key].extras.morningAdhkar = MORNING_ADHKAR.map(()=>false);
+  while(state._days[key].extras.morningAdhkar.length < MORNING_ADHKAR.length) state._days[key].extras.morningAdhkar.push(false);
+  if(!Array.isArray(state._days[key].extras.eveningAdhkar)) state._days[key].extras.eveningAdhkar = EVENING_ADHKAR.map(()=>false);
+  while(state._days[key].extras.eveningAdhkar.length < EVENING_ADHKAR.length) state._days[key].extras.eveningAdhkar.push(false);
   return state._days[key];
 }
 function saveState(){
@@ -261,14 +350,44 @@ function isExcluded(key, prayerIdx){
 function activePrayers(key){
   return PRAYER_ORDER.filter((k,i)=> !isExcluded(key, i));
 }
+function isFriday(d){ return d.getDay()===5; }
+function isWhiteDay(d){
+  const h = gregorianToHijri(d);
+  return h.day>=13 && h.day<=15;
+}
+function isHaramFastingDay(d){
+  const h = gregorianToHijri(d);
+  if(h.month===10 && h.day===1) return true; // Eid al-Fitr
+  if(h.month===12 && h.day===10) return true; // Eid al-Adha
+  if(h.month===12 && h.day>=11 && h.day<=13) return true; // Tashreeq
+  return false;
+}
+function isHaizActiveDay(key){
+  return PRAYER_ORDER.some((k,i)=> isExcluded(key,i));
+}
+function isSuggestedFastDay(d){
+  const key = dateKey(d);
+  if(isHaramFastingDay(d)) return false;
+  if(isHaizActiveDay(key)) return false;
+  const dow = d.getDay(); // 1=Mon, 4=Thu
+  return dow===1 || dow===4 || isWhiteDay(d);
+}
 
 // ---------- helpers ----------
 function fardComplete(key){
   const day = getDay(key);
   return activePrayers(key).every(k=>{
     const units = PRAYER_TEMPLATE[k].units;
-    return units.every((u,i)=> !u[2] || day.prayers[k][i]);
+    return units.every((u,i)=> !u[2] || (day.prayers[k][i] && !day.qaza[k][i]));
   });
+}
+function totalQaza(){
+  let sum = 0;
+  Object.values(state._days).forEach(d=>{
+    if(!d.qaza) return;
+    PRAYER_ORDER.forEach(k=>{ (d.qaza[k]||[]).forEach(v=>{ if(v) sum++; }); });
+  });
+  return sum;
 }
 function completionFraction(key){
   const day = getDay(key);
@@ -312,15 +431,35 @@ function renderUnit(container, key, prayerKey, idx, unitDef){
   const [label, count, required] = unitDef;
   const day = getDay(key);
   const checked = day.prayers[prayerKey][idx];
+  const isQaza = day.qaza[prayerKey][idx];
+  const wrap = document.createElement('div');
+  wrap.className = 'unit-wrap';
+
   const el = document.createElement('div');
-  el.className = 'unit' + (checked?' on':'') + (!required?' optional':'');
+  el.className = 'unit' + (checked?' on':'') + (!required?' optional':'') + (checked && isQaza ? ' qaza-on':'');
   el.innerHTML = `<div class="box"></div><div class="lbl">${label}</div><div class="cnt">${count}</div>`;
   el.onclick = () => {
     day.prayers[prayerKey][idx] = !day.prayers[prayerKey][idx];
+    if(!day.prayers[prayerKey][idx]) day.qaza[prayerKey][idx] = false;
     saveState();
     render();
   };
-  container.appendChild(el);
+  wrap.appendChild(el);
+
+  if(required && checked){
+    const pill = document.createElement('div');
+    pill.className = 'qaza-pill' + (isQaza ? ' on' : '');
+    pill.textContent = isQaza ? 'Qaza' : 'On time';
+    pill.onclick = (e) => {
+      e.stopPropagation();
+      day.qaza[prayerKey][idx] = !day.qaza[prayerKey][idx];
+      saveState();
+      render();
+    };
+    wrap.appendChild(pill);
+  }
+
+  container.appendChild(wrap);
 }
 
 function renderDayDetail(container, d){
@@ -350,21 +489,152 @@ function renderDayDetail(container, d){
     row.className = 'unit-row';
     tmpl.units.forEach((u,i)=> renderUnit(row, key, pk, i, u));
     block.appendChild(row);
+
+    const akRow = document.createElement('div');
+    akRow.className = 'unit-row ayat-kursi-row';
+    const akOn = day.extras.ayatKursi[pIdx];
+    const akChip = document.createElement('div');
+    akChip.className = 'unit optional' + (akOn ? ' on' : '');
+    akChip.innerHTML = `<div class="box"></div><div class="lbl">Ayat al-Kursi</div>`;
+    akChip.onclick = () => { day.extras.ayatKursi[pIdx] = !day.extras.ayatKursi[pIdx]; saveState(); render(); };
+    akRow.appendChild(akChip);
+    block.appendChild(akRow);
+
     container.appendChild(block);
   });
 
+  // ---- Sunnah recitations ----
+  const recBlock = document.createElement('div');
+  recBlock.className = 'extra-block';
+  recBlock.innerHTML = `<div class="extra-title">📗 Sunnah Recitations</div>`;
+  const recRow = document.createElement('div');
+  recRow.className = 'extra-row';
+  const recItems = [
+    ['yaseen','Yaseen (after Fajr)'],
+    ['manzil','Manzil (after Fajr)'],
+    ['waqia','Waqia (after Maghrib)'],
+    ['mulk','Mulk (after Isha)'],
+  ];
+  recItems.forEach(([k,label])=>{
+    const chip = document.createElement('div');
+    chip.className = 'unit' + (day.extras[k] ? ' on' : '');
+    chip.innerHTML = `<div class="box"></div><div class="lbl">${label}</div>`;
+    chip.onclick = () => { day.extras[k] = !day.extras[k]; saveState(); render(); };
+    recRow.appendChild(chip);
+  });
+  recBlock.appendChild(recRow);
+  container.appendChild(recBlock);
+
+  // ---- Friday specials ----
+  if(isFriday(d)){
+    const friBlock = document.createElement('div');
+    friBlock.className = 'extra-block';
+    friBlock.innerHTML = `<div class="extra-title">Friday Specials <span class="fri-badge">Jumu'ah</span></div>`;
+    const friRow = document.createElement('div');
+    friRow.className = 'extra-row';
+    [['kahf','Surah Kahf'],['jumua',"Surah Al-Jumu'ah"]].forEach(([k,label])=>{
+      const chip = document.createElement('div');
+      chip.className = 'unit' + (day.extras[k] ? ' on' : '');
+      chip.innerHTML = `<div class="box"></div><div class="lbl">${label}</div>`;
+      chip.onclick = () => { day.extras[k] = !day.extras[k]; saveState(); render(); };
+      friRow.appendChild(chip);
+    });
+    friBlock.appendChild(friRow);
+    container.appendChild(friBlock);
+  }
+
+  // ---- Dhikr / Durood / Istighfar tallies ----
+  const tallyBlock = document.createElement('div');
+  tallyBlock.className = 'extra-block';
+  tallyBlock.innerHTML = `<div class="extra-title">📿 Dhikr Count</div>`;
+  const doroodTarget = isFriday(d) ? 1000 : 100;
+  const tallies = [
+    ['durood','Durood', doroodTarget],
+    ['istighfar','Istighfar', 100],
+    ['dhikr','General Dhikr', null],
+  ];
+  tallies.forEach(([k,label,target])=>{
+    const row2 = document.createElement('div');
+    row2.className = 'tally-row';
+    const left = document.createElement('div');
+    left.innerHTML = `<div class="tally-label">${label}</div>` + (target ? `<div class="tally-target">target ${target}${k==='durood' && isFriday(d) ? ' (Friday)' : ''}</div>` : '');
+    const stepper2 = document.createElement('div');
+    stepper2.className = 'tally-stepper';
+    const minus2 = document.createElement('div'); minus2.className='step-btn'; minus2.textContent='–';
+    const val2 = document.createElement('div'); val2.className='step-val'; val2.textContent = day.extras[k];
+    const plus2 = document.createElement('div'); plus2.className='step-btn'; plus2.textContent='+';
+    const step = 10;
+    minus2.onclick = () => { day.extras[k] = Math.max(0, day.extras[k]-step); saveState(); render(); };
+    plus2.onclick = () => { day.extras[k] = day.extras[k]+step; saveState(); render(); };
+    stepper2.appendChild(minus2); stepper2.appendChild(val2); stepper2.appendChild(plus2);
+    const directInput = document.createElement('input');
+    directInput.type = 'number';
+    directInput.min = '0';
+    directInput.className = 'tally-direct';
+    directInput.value = day.extras[k];
+    directInput.onchange = () => {
+      const v = parseInt(directInput.value, 10);
+      day.extras[k] = isNaN(v) || v < 0 ? 0 : v;
+      saveState(); render();
+    };
+    stepper2.appendChild(directInput);
+    row2.appendChild(left); row2.appendChild(stepper2);
+    tallyBlock.appendChild(row2);
+  });
+  container.appendChild(tallyBlock);
+
+  // ---- Fasting ----
+  if(isSuggestedFastDay(d)){
+    const fastBlock = document.createElement('div');
+    fastBlock.className = 'fast-card';
+    const reason = isWhiteDay(d) ? 'White Day' : (d.getDay()===1 ? 'Monday' : 'Thursday');
+    fastBlock.innerHTML = `<div class="extra-title">🌙 Sunnah Fast <span class="fri-badge" style="background:var(--emerald);">${reason}</span></div>
+      <div class="fast-note">Today is a recommended fasting day.</div>`;
+    const chip = document.createElement('div');
+    chip.className = 'unit' + (day.extras.fasted ? ' on' : '');
+    chip.style.marginTop = '6px';
+    chip.innerHTML = `<div class="box"></div><div class="lbl">Fasted today</div>`;
+    chip.onclick = () => { day.extras.fasted = !day.extras.fasted; saveState(); render(); };
+    fastBlock.appendChild(chip);
+    container.appendChild(fastBlock);
+  }
+
   const qBlock = document.createElement('div');
   qBlock.className = 'quran-block';
-  qBlock.innerHTML = `<div class="quran-title">📖 Qur'an — Juz read today</div>`;
+  qBlock.innerHTML = `<div class="quran-title">📖 Qur'an</div>`;
+
+  const recLabel = document.createElement('div');
+  recLabel.className = 'tally-label';
+  recLabel.style.marginBottom = '4px';
+  recLabel.textContent = 'Juz read today';
+  qBlock.appendChild(recLabel);
+
   const stepper = document.createElement('div');
   stepper.className = 'quran-stepper';
   const minus = document.createElement('div'); minus.className='step-btn'; minus.textContent='–';
   const val = document.createElement('div'); val.className='step-val'; val.textContent = day.quran + ' juz';
   const plus = document.createElement('div'); plus.className='step-btn'; plus.textContent='+';
-  minus.onclick = () => { day.quran = Math.max(0, Math.round((day.quran - 0.5)*2)/2); saveState(); render(); };
-  plus.onclick = () => { day.quran = Math.round((day.quran + 0.5)*2)/2; saveState(); render(); };
+  minus.onclick = () => { day.quran = Math.max(0, Math.round((day.quran - 0.25)*4)/4); saveState(); render(); };
+  plus.onclick = () => { day.quran = Math.round((day.quran + 0.25)*4)/4; saveState(); render(); };
   stepper.appendChild(minus); stepper.appendChild(val); stepper.appendChild(plus);
   qBlock.appendChild(stepper);
+
+  const transLabel = document.createElement('div');
+  transLabel.className = 'tally-label';
+  transLabel.style.margin = '14px 0 4px';
+  transLabel.textContent = 'Translation read today';
+  qBlock.appendChild(transLabel);
+
+  const tStepper = document.createElement('div');
+  tStepper.className = 'quran-stepper';
+  const tMinus = document.createElement('div'); tMinus.className='step-btn'; tMinus.textContent='–';
+  const tVal = document.createElement('div'); tVal.className='step-val'; tVal.textContent = day.quranTranslation + ' juz';
+  const tPlus = document.createElement('div'); tPlus.className='step-btn'; tPlus.textContent='+';
+  tMinus.onclick = () => { day.quranTranslation = Math.max(0, Math.round((day.quranTranslation - 0.25)*4)/4); saveState(); render(); };
+  tPlus.onclick = () => { day.quranTranslation = Math.round((day.quranTranslation + 0.25)*4)/4; saveState(); render(); };
+  tStepper.appendChild(tMinus); tStepper.appendChild(tVal); tStepper.appendChild(tPlus);
+  qBlock.appendChild(tStepper);
+
   container.appendChild(qBlock);
 }
 
@@ -461,7 +731,7 @@ function renderMonthly(){
     const monthDate = monthMeta(off);
     const y = monthDate.getFullYear(), m = monthDate.getMonth();
     const daysInMonth = new Date(y, m+1, 0).getDate();
-    let totalPrayerUnits=0, doneUnits=0, juzSum=0, fullDays=0, trackedDays=0;
+    let totalPrayerUnits=0, doneUnits=0, juzSum=0, fullDays=0, trackedDays=0, qazaCount=0;
     for(let dNum=1; dNum<=daysInMonth; dNum++){
       const cellDate = new Date(y, m, dNum);
       if(!inRange(cellDate)) continue;
@@ -471,6 +741,7 @@ function renderMonthly(){
       activePrayers(key).forEach(pk=>{
         totalPrayerUnits += day.prayers[pk].length;
         doneUnits += day.prayers[pk].filter(Boolean).length;
+        day.qaza[pk].forEach(v=>{ if(v) qazaCount++; });
       });
       juzSum += (day.quran||0);
       if(completionFraction(key)>=1) fullDays++;
@@ -479,7 +750,7 @@ function renderMonthly(){
     const row = document.createElement('div');
     row.className = 'month-row';
     row.innerHTML = `<div class="m-label">${GREG_MONTHS[m]} ${y}</div>
-      <div class="m-stats"><span class="pct">${pct}%</span> prayers · ${juzSum} juz · ${fullDays}/${trackedDays} full days</div>`;
+      <div class="m-stats"><span class="pct">${pct}%</span> prayers · ${juzSum} juz · ${fullDays}/${trackedDays} full days · ${qazaCount} qaza</div>`;
     row.onclick = () => { view='calendar'; calMonthOffset=off; selectedCalDate=null; render(); };
     card.appendChild(row);
   }
@@ -573,6 +844,44 @@ function renderHeader(){
   const tj = totalJuz();
   document.getElementById('juzStat').textContent = Math.round((tj%30)*10)/10 + '/30';
   document.getElementById('khatmStat').textContent = Math.floor(tj/30);
+  document.getElementById('qazaStat').textContent = totalQaza();
+}
+
+function renderAdhkar(){
+  contentEl.innerHTML = '';
+  const now = new Date();
+  const clamped = now < START ? new Date(START) : (now > END ? new Date(END) : now);
+  const key = dateKey(clamped);
+  const day = getDay(key);
+
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `<div class="day-head"><span class="g">${DOW[(clamped.getDay()+6)%7]}, ${clamped.getDate()} ${GREG_MONTHS[clamped.getMonth()]}</span></div>`;
+
+  function buildList(title, icon, items, stateKey){
+    const doneCount = day.extras[stateKey].filter(Boolean).length;
+    const block = document.createElement('div');
+    block.className = 'extra-block';
+    block.style.marginTop = '8px';
+    block.style.paddingTop = '0';
+    block.style.borderTop = 'none';
+    block.innerHTML = `<div class="extra-title">${icon} ${title} <span class="tally-target" style="margin-left:auto;">${doneCount}/${items.length}</span></div>`;
+    items.forEach((label, i)=>{
+      const chip = document.createElement('div');
+      chip.className = 'unit' + (day.extras[stateKey][i] ? ' on' : '');
+      chip.style.width = '100%';
+      chip.style.marginBottom = '6px';
+      chip.innerHTML = `<div class="box"></div><div class="lbl">${label}</div>`;
+      chip.onclick = () => { day.extras[stateKey][i] = !day.extras[stateKey][i]; saveState(); render(); };
+      block.appendChild(chip);
+    });
+    card.appendChild(block);
+  }
+
+  buildList('Morning Adhkar', '🌅', MORNING_ADHKAR, 'morningAdhkar');
+  buildList('Evening Adhkar', '🌆', EVENING_ADHKAR, 'eveningAdhkar');
+
+  contentEl.appendChild(card);
 }
 
 function render(){
@@ -580,7 +889,8 @@ function render(){
   if(view==='today') renderToday();
   else if(view==='calendar') renderCalendar();
   else if(view==='monthly') renderMonthly();
-  else renderHaiz();
+  else if(view==='haiz') renderHaiz();
+  else renderAdhkar();
   renderHeader();
 }
 render();
